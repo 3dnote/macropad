@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MacroKeypad Web Serial Config by 3dnote</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f1115;
+      --panel: #171a21;
+      --panel-2: #1d2230;
+      --text: #e8e8e8;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --ok: #24d27c;
+      --warn: #ffb020;
+      --err: #ff5c5c;
+      --border: #2a2f3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 20px auto 40px;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--panel);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; }
+    .subtitle { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    h2 { margin: 0 0 10px; font-size: 16px; color: var(--muted); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .spacer { flex: 1; }
+    button {
+      background: var(--accent);
+      color: white;
+      border: 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.secondary { background: #2a2f3a; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status { font-size: 12px; color: var(--muted); white-space: pre-line; }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.err { color: var(--err); }
+    .firmware-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .firmware-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    .layout { display: grid; grid-template-columns: 1.1fr 0.9fr 0.9fr; gap: 16px; }
+    @media (max-width: 1180px) { .layout { grid-template-columns: 1fr; } }
+
+    .layer-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .layer-tab {
+      padding: 6px 10px; border-radius: 8px; background: #2a2f3a; cursor: pointer;
+      font-size: 12px; font-weight: 600; color: var(--text);
+      border: 1px solid transparent;
+    }
+    .layer-tab.active { background: var(--accent); border-color: rgba(255,255,255,0.15); }
+
+    .key-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .key-cell {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      min-height: 70px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .key-cell.dragover { outline: 2px dashed var(--accent); }
+    .key-cell.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .key-label { font-size: 12px; color: var(--muted); }
+    .key-value { font-size: 14px; font-weight: 600; }
+
+    .encoder-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+
+    .editor {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #121621;
+      border: 1px solid var(--border);
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    input, select, textarea {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      color: var(--text);
+    }
+    textarea { min-height: 80px; resize: vertical; }
+
+    .key-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      max-height: 520px;
+      overflow: auto;
+    }
+    .key-item {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      font-size: 12px;
+      cursor: grab;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .key-item:active { cursor: grabbing; }
+    .key-code { color: var(--muted); font-size: 11px; }
+
+    .pill { display: inline-flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 999px; background: #232838; font-size: 11px; color: var(--muted); }
+    .mod-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .json-preview { width: 100%; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .hint { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>MacroKeypad Web Serial Config</h1>
+      <div class="subtitle">by 3dnote</div>
+      <div class="row">
+        <button id="connectBtn">기기 연결</button>
+        <button id="disconnectBtn" class="secondary" disabled>연결 끊기</button>
+        <span id="status" class="status">미연결</span>
+        <span class="spacer"></span>
+        <button id="sendBtn" disabled>기기에 적용</button>
+        <button id="resetBtn" class="secondary">기본값으로 초기화</button>
+        <button id="saveBtn" class="secondary">파일로 저장</button>
+        <button id="loadBtn" class="secondary">파일에서 불러오기</button>
+        <button id="fetchBtn" class="secondary" disabled>기기 설정 불러오기</button>
+        <input id="fileInput" type="file" accept="application/json" style="display:none" />
+      </div>
+      <div class="status" id="lastResp" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>펌웨어 업로드 (Web USB)</h2>
+      <div class="firmware-actions">
+        <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+      </div>
+      <div class="firmware-note">Chrome/Edge에서 HTTPS로 접속해야 하며, USB 연결 후 권한을 승인해야 합니다.</div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div class="row" style="justify-content: space-between;">
+          <h2>키배열 / 레이어</h2>
+          <div class="layer-tabs" id="layerTabs"></div>
+        </div>
+
+        <div class="key-grid" id="keyGrid"></div>
+        <div class="encoder-row" id="encoderRow"></div>
+      </div>
+
+      <div class="card">
+        <h2>키값 리스트 (Drag & Drop)</h2>
+        <div class="field">
+          <input id="keySearch" placeholder="검색: 예) A, F1, PgUp" />
+        </div>
+        <div class="key-list" id="keyList"></div>
+        <p class="hint" style="margin-top:10px;">키 리스트의 항목을 드래그해서 원하는 키칸/엔코더에 드롭하세요.</p>
+      </div>
+
+      <div class="card">
+        <h2>키 편집</h2>
+        <div class="editor" id="editor">
+          <div class="row" style="justify-content: space-between; margin-bottom: 6px;">
+            <strong id="editorTitle">선택된 키</strong>
+            <span class="pill" id="editorIndex">K0</span>
+          </div>
+
+          <div class="field">
+            <label>타입</label>
+            <select id="typeSelect">
+              <option value="0">없음</option>
+              <option value="1">단일키</option>
+              <option value="2">조합키</option>
+              <option value="3">매크로</option>
+            </select>
+          </div>
+
+          <div class="field" id="singleKeyField">
+            <label>키</label>
+            <select id="singleKeySelect"></select>
+          </div>
+
+          <div id="comboFields">
+            <div class="field">
+              <label>Modifier</label>
+              <div class="mod-grid" id="modGrid"></div>
+            </div>
+            <div class="field">
+              <label>키</label>
+              <select id="comboKeySelect"></select>
+            </div>
+          </div>
+
+          <div class="field" id="macroField">
+            <label>매크로 문자열</label>
+            <textarea id="macroInput" placeholder="예: hello world"></textarea>
+          </div>
+
+          <div class="row">
+            <button id="applyBtn">편집 적용</button>
+            <button id="clearBtn" class="secondary">비우기</button>
+          </div>
+        </div>
+
+        <h2 style="margin-top:20px;">키 테스트</h2>
+        <input id="keyTest" placeholder="여기에 포커스 후 키패드를 눌러 테스트" />
+
+        <h2 style="margin-top:20px;">JSON 미리보기</h2>
+        <textarea class="json-preview" id="jsonPreview" readonly></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="https://unpkg.com/esp-web-tools@9/dist/web/install-button.js"></script>
+  <script>
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const fileInput = document.getElementById('fileInput');
+    const statusEl = document.getElementById('status');
+    const lastResp = document.getElementById('lastResp');
+    const layerTabs = document.getElementById('layerTabs');
+    const keyGrid = document.getElementById('keyGrid');
+    const encoderRow = document.getElementById('encoderRow');
+    const editorTitle = document.getElementById('editorTitle');
+    const editorIndex = document.getElementById('editorIndex');
+    const typeSelect = document.getElementById('typeSelect');
+    const singleKeySelect = document.getElementById('singleKeySelect');
+    const comboKeySelect = document.getElementById('comboKeySelect');
+    const macroInput = document.getElementById('macroInput');
+    const applyBtn = document.getElementById('applyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const singleKeyField = document.getElementById('singleKeyField');
+    const comboFields = document.getElementById('comboFields');
+    const macroField = document.getElementById('macroField');
+    const keyListEl = document.getElementById('keyList');
+    const keySearch = document.getElementById('keySearch');
+    const jsonPreview = document.getElementById('jsonPreview');
+    const modGrid = document.getElementById('modGrid');
+
+    let port;
+    let reader;
+    let writer;
+    let readLoopRunning = false;
+    let isRendering = false;
+    let rxBuffer = '';
+
+    const LAYERS = 4;
+    const TOTAL_KEYS = 11; // 9 keys + encoder cw/ccw
+
+    const MODIFIERS = [
+      { label: 'L-CTRL', bit: 0x01 },
+      { label: 'L-SHIFT', bit: 0x02 },
+      { label: 'L-ALT', bit: 0x04 },
+      { label: 'L-GUI', bit: 0x08 },
+      { label: 'R-CTRL', bit: 0x10 },
+      { label: 'R-SHIFT', bit: 0x20 },
+      { label: 'R-ALT', bit: 0x40 },
+      { label: 'R-GUI', bit: 0x80 }
+    ];
+
+    const KEY_LIST = [
+      { label: 'A', code: 0x04 }, { label: 'B', code: 0x05 }, { label: 'C', code: 0x06 }, { label: 'D', code: 0x07 },
+      { label: 'E', code: 0x08 }, { label: 'F', code: 0x09 }, { label: 'G', code: 0x0A }, { label: 'H', code: 0x0B },
+      { label: 'I', code: 0x0C }, { label: 'J', code: 0x0D }, { label: 'K', code: 0x0E }, { label: 'L', code: 0x0F },
+      { label: 'M', code: 0x10 }, { label: 'N', code: 0x11 }, { label: 'O', code: 0x12 }, { label: 'P', code: 0x13 },
+      { label: 'Q', code: 0x14 }, { label: 'R', code: 0x15 }, { label: 'S', code: 0x16 }, { label: 'T', code: 0x17 },
+      { label: 'U', code: 0x18 }, { label: 'V', code: 0x19 }, { label: 'W', code: 0x1A }, { label: 'X', code: 0x1B },
+      { label: 'Y', code: 0x1C }, { label: 'Z', code: 0x1D },
+      { label: '1', code: 0x1E }, { label: '2', code: 0x1F }, { label: '3', code: 0x20 }, { label: '4', code: 0x21 },
+      { label: '5', code: 0x22 }, { label: '6', code: 0x23 }, { label: '7', code: 0x24 }, { label: '8', code: 0x25 },
+      { label: '9', code: 0x26 }, { label: '0', code: 0x27 },
+      { label: 'Enter', code: 0x28 }, { label: 'Esc', code: 0x29 }, { label: 'Backspace', code: 0x2A }, { label: 'Tab', code: 0x2B },
+      { label: 'Space', code: 0x2C }, { label: 'Minus', code: 0x2D, aliases: ['-', 'dash', 'hyphen'] }, { label: 'Equal', code: 0x2E, aliases: ['=', 'equal'] },
+      { label: 'L-Bracket', code: 0x2F }, { label: 'R-Bracket', code: 0x30 }, { label: 'Backslash', code: 0x31 },
+      { label: 'Semicolon', code: 0x33 }, { label: 'Quote', code: 0x34, aliases: ['\'', 'apostrophe', 'quote'] }, { label: 'Backtick/Grave', code: 0x35, aliases: ['grave', 'tilde', '`', '~'] },
+      { label: 'Comma', code: 0x36 }, { label: 'Period', code: 0x37 }, { label: 'Slash', code: 0x38 },
+      { label: 'CapsLock', code: 0x39 },
+      { label: 'F1', code: 0x3A }, { label: 'F2', code: 0x3B }, { label: 'F3', code: 0x3C }, { label: 'F4', code: 0x3D },
+      { label: 'F5', code: 0x3E }, { label: 'F6', code: 0x3F }, { label: 'F7', code: 0x40 }, { label: 'F8', code: 0x41 },
+      { label: 'F9', code: 0x42 }, { label: 'F10', code: 0x43 }, { label: 'F11', code: 0x44 }, { label: 'F12', code: 0x45 },
+      { label: 'Insert', code: 0x49 }, { label: 'Home', code: 0x4A }, { label: 'PgUp', code: 0x4B },
+      { label: 'Delete', code: 0x4C }, { label: 'End', code: 0x4D }, { label: 'PgDn', code: 0x4E },
+      { label: 'Right', code: 0x4F }, { label: 'Left', code: 0x50 }, { label: 'Down', code: 0x51 }, { label: 'Up', code: 0x52 },
+      { label: 'Plus (+)', code: 0x2E, mod: 0x02, virtual: true, aliases: ['plus', '+', 'shift+equal'] }
+    ];
+
+    const state = {
+      currentLayer: 0,
+      selectedIndex: 0,
+      layerTitles: ['문서용', '동영상용', '코딩용', '기타'],
+      layers: Array.from({ length: LAYERS }, () => Array.from({ length: TOTAL_KEYS }, () => ({
+        type: 0, key1: 0, key2: 0, macro: ""
+      })))
+    };
+
+    function normalizeLayer(layer) {
+      const normalized = [];
+      for (let i = 0; i < TOTAL_KEYS; i++) {
+        const key = layer?.[i] || {};
+        normalized.push({
+          type: Number(key.type || 0),
+          key1: Number(key.key1 || 0),
+          key2: Number(key.key2 || 0),
+          macro: String(key.macro || "")
+        });
+      }
+      return normalized;
+    }
+
+    function applyStateFromJson(json) {
+      if (!json || !Array.isArray(json.layers)) {
+        setResp('JSON 형식 오류: layers 없음', 'err');
+        return;
+      }
+      if (Array.isArray(json.layerTitles)) {
+        state.layerTitles = json.layerTitles.map(t => String(t || '').trim()).slice(0, LAYERS);
+        while (state.layerTitles.length < LAYERS) state.layerTitles.push(`Layer ${state.layerTitles.length}`);
+      }
+      for (let l = 0; l < LAYERS; l++) {
+        const layerObj = json.layers[l];
+        const keys = Array.isArray(layerObj?.keys) ? layerObj.keys : [];
+        state.layers[l] = normalizeLayer(keys);
+      }
+      renderAll();
+    }
+
+    function setStatus(text, type = '') {
+      statusEl.textContent = text;
+      statusEl.className = `status ${type}`.trim();
+    }
+
+    function setResp(text, type = '') {
+      lastResp.textContent = text;
+      lastResp.className = `status ${type}`.trim();
+    }
+
+    function setDefaultKeyMap() {
+      const setKey = (l, i, type, key1, key2) => {
+        state.layers[l][i] = { type, key1, key2, macro: "" };
+      };
+
+      // Layer 0: 일반 문서 편집
+      setKey(0, 0, 2, 0x01, 0x1D); // Ctrl+Z
+      setKey(0, 1, 2, 0x01, 0x1C); // Ctrl+Y
+      setKey(0, 2, 2, 0x01, 0x1B); // Ctrl+X
+      setKey(0, 3, 2, 0x01, 0x06); // Ctrl+C
+      setKey(0, 4, 2, 0x01, 0x19); // Ctrl+V
+      setKey(0, 5, 2, 0x01, 0x16); // Ctrl+S
+      setKey(0, 6, 2, 0x01, 0x04); // Ctrl+A
+      setKey(0, 7, 2, 0x01, 0x09); // Ctrl+F
+      setKey(0, 8, 2, 0x01, 0x11); // Ctrl+N
+      setKey(0, 9, 1, 0x4E, 0x00); // PgDn
+      setKey(0, 10, 1, 0x4B, 0x00); // PgUp
+
+      // Layer 1: CAD/그래픽
+      setKey(1, 0, 2, 0x01, 0x1D); // Ctrl+Z
+      setKey(1, 1, 2, 0x03, 0x1D); // Ctrl+Shift+Z
+      setKey(1, 2, 2, 0x01, 0x16); // Ctrl+S
+      setKey(1, 3, 2, 0x03, 0x16); // Ctrl+Shift+S
+      setKey(1, 4, 2, 0x01, 0x0A); // Ctrl+G
+      setKey(1, 5, 2, 0x03, 0x0A); // Ctrl+Shift+G
+      setKey(1, 6, 2, 0x01, 0x27); // Ctrl+0
+      setKey(1, 7, 2, 0x01, 0x2E); // Ctrl+= (Zoom In)
+      setKey(1, 8, 2, 0x01, 0x2D); // Ctrl+- (Zoom Out)
+      setKey(1, 9, 2, 0x01, 0x2E); // Ctrl+= (Encoder CW)
+      setKey(1, 10, 2, 0x01, 0x2D); // Ctrl+- (Encoder CCW)
+
+      // Layer 2: 동영상 편집
+      setKey(2, 0, 1, 0x0D, 0x00); // J
+      setKey(2, 1, 1, 0x0E, 0x00); // K
+      setKey(2, 2, 1, 0x0F, 0x00); // L
+      setKey(2, 3, 1, 0x0C, 0x00); // I
+      setKey(2, 4, 1, 0x12, 0x00); // O
+      setKey(2, 5, 1, 0x2C, 0x00); // Space
+      setKey(2, 6, 1, 0x10, 0x00); // M
+      setKey(2, 7, 2, 0x01, 0x1D); // Ctrl+Z
+      setKey(2, 8, 2, 0x01, 0x16); // Ctrl+S
+      setKey(2, 9, 1, 0x4F, 0x00); // Right
+      setKey(2, 10, 1, 0x50, 0x00); // Left
+
+      // Layer 3: 음악/영상 재생
+      setKey(3, 0, 1, 0x2C, 0x00); // Space
+      setKey(3, 1, 1, 0x50, 0x00); // Left
+      setKey(3, 2, 1, 0x4F, 0x00); // Right
+      setKey(3, 3, 1, 0x52, 0x00); // Up
+      setKey(3, 4, 1, 0x51, 0x00); // Down
+      setKey(3, 5, 1, 0x10, 0x00); // M
+      setKey(3, 6, 1, 0x09, 0x00); // F
+      setKey(3, 7, 1, 0x29, 0x00); // Esc
+      setKey(3, 8, 1, 0x28, 0x00); // Enter
+      setKey(3, 9, 1, 0x52, 0x00); // Up
+      setKey(3, 10, 1, 0x51, 0x00); // Down
+
+      renderAll();
+    }
+
+    function keyLabel(code) {
+      const item = KEY_LIST.find(k => k.code === code && !k.virtual) || KEY_LIST.find(k => k.code === code);
+      return item ? item.label : `0x${code.toString(16).toUpperCase()}`;
+    }
+
+    function comboLabel(mod, key) {
+      const mods = MODIFIERS.filter(m => (mod & m.bit) !== 0).map(m => m.label);
+      const keyName = key ? keyLabel(key) : 'None';
+      return `${mods.join('+') || 'None'} + ${keyName}`;
+    }
+
+    function getCellLabel(km) {
+      if (km.type === 0) return 'Empty';
+      if (km.type === 1) return keyLabel(km.key1);
+      if (km.type === 2) return comboLabel(km.key1, km.key2);
+      if (km.type === 3) return `Macro: ${km.macro.slice(0, 16)}${km.macro.length > 16 ? '…' : ''}`;
+      return 'Unknown';
+    }
+
+    function renderLayerTabs() {
+      layerTabs.innerHTML = '';
+      for (let i = 0; i < LAYERS; i++) {
+        const btn = document.createElement('div');
+        btn.className = `layer-tab ${i === state.currentLayer ? 'active' : ''}`;
+
+        const title = document.createElement('div');
+        title.textContent = `Layer ${i}`;
+        title.style.fontSize = '11px';
+        title.style.color = 'rgba(255,255,255,0.7)';
+
+        const input = document.createElement('input');
+        input.value = state.layerTitles[i] || '';
+        input.placeholder = '서브타이틀';
+        input.style.marginTop = '4px';
+        input.style.fontSize = '11px';
+        input.style.padding = '4px 6px';
+        input.style.borderRadius = '6px';
+        input.style.border = '1px solid var(--border)';
+        input.style.background = '#0b0d12';
+        input.style.color = 'var(--text)';
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('input', () => {
+          state.layerTitles[i] = input.value;
+          renderJsonPreview();
+        });
+
+        btn.appendChild(title);
+        btn.appendChild(input);
+        btn.addEventListener('click', () => {
+          state.currentLayer = i;
+          renderAll();
+        });
+        layerTabs.appendChild(btn);
+      }
+    }
+
+    function createCell(index, label) {
+      const cell = document.createElement('div');
+      cell.className = `key-cell ${index === state.selectedIndex ? 'selected' : ''}`;
+      cell.dataset.index = String(index);
+
+      const title = document.createElement('div');
+      title.className = 'key-label';
+      title.textContent = label;
+
+      const value = document.createElement('div');
+      value.className = 'key-value';
+      value.textContent = getCellLabel(state.layers[state.currentLayer][index]);
+
+      cell.appendChild(title);
+      cell.appendChild(value);
+
+      cell.addEventListener('click', () => {
+        state.selectedIndex = index;
+        renderAll();
+      });
+
+      cell.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        cell.classList.add('dragover');
+      });
+      cell.addEventListener('dragleave', () => cell.classList.remove('dragover'));
+      cell.addEventListener('drop', (e) => {
+        e.preventDefault();
+        cell.classList.remove('dragover');
+        const code = Number(e.dataTransfer.getData('text/keycode'));
+        const mod = Number(e.dataTransfer.getData('text/keymod')) || 0;
+        if (code) {
+          if (mod) {
+            state.layers[state.currentLayer][index] = { type: 2, key1: mod, key2: code, macro: "" };
+          } else {
+            state.layers[state.currentLayer][index] = { type: 1, key1: code, key2: 0, macro: "" };
+          }
+          renderAll();
+        }
+      });
+
+      return cell;
+    }
+
+    function renderGrid() {
+      keyGrid.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        keyGrid.appendChild(createCell(i, `K${i + 1}`));
+      }
+
+      encoderRow.innerHTML = '';
+      encoderRow.appendChild(createCell(9, 'ENC CW'));
+      encoderRow.appendChild(createCell(10, 'ENC CCW'));
+    }
+
+    function renderEditor() {
+      isRendering = true;
+      const km = state.layers[state.currentLayer][state.selectedIndex];
+      editorTitle.textContent = state.selectedIndex < 9 ? `키 ${state.selectedIndex + 1}` : (state.selectedIndex === 9 ? '엔코더 CW' : '엔코더 CCW');
+      editorIndex.textContent = `K${state.selectedIndex}`;
+
+      typeSelect.value = String(km.type);
+      singleKeySelect.value = String(km.key1 || 0);
+      comboKeySelect.value = String(km.key2 || 0);
+      macroInput.value = km.macro || '';
+
+      const showSingle = km.type === 1;
+      const showCombo = km.type === 2;
+      const showMacro = km.type === 3;
+
+      singleKeyField.style.display = showSingle ? 'block' : 'none';
+      comboFields.style.display = showCombo ? 'block' : 'none';
+      macroField.style.display = showMacro ? 'block' : 'none';
+
+      [...modGrid.querySelectorAll('input[type=checkbox]')].forEach((cb) => {
+        cb.checked = (km.key1 & Number(cb.value)) !== 0;
+      });
+      isRendering = false;
+    }
+
+    function renderKeyList() {
+      const keyword = keySearch.value.trim().toLowerCase();
+      const list = keyword
+        ? KEY_LIST.filter(k => {
+          const hay = [k.label, ...(k.aliases || [])].map(v => String(v).toLowerCase());
+          return hay.some(v => v.includes(keyword));
+        })
+        : KEY_LIST;
+
+      keyListEl.innerHTML = '';
+      list.forEach((k) => {
+        const item = document.createElement('div');
+        item.className = 'key-item';
+        item.draggable = true;
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/keycode', String(k.code));
+          e.dataTransfer.setData('text/keymod', String(k.mod || 0));
+        });
+        const label = document.createElement('span');
+        label.textContent = k.label;
+        const code = document.createElement('span');
+        code.className = 'key-code';
+        code.textContent = `0x${k.code.toString(16).toUpperCase()}`;
+        item.appendChild(label);
+        item.appendChild(code);
+        keyListEl.appendChild(item);
+      });
+    }
+
+    function renderKeySelects() {
+      const options = KEY_LIST
+        .filter(k => !k.virtual)
+        .map(k => `<option value="${k.code}">${k.label} (0x${k.code.toString(16).toUpperCase()})</option>`)
+        .join('');
+      singleKeySelect.innerHTML = `<option value="0">None</option>${options}`;
+      comboKeySelect.innerHTML = `<option value="0">None</option>${options}`;
+    }
+
+    function renderModGrid() {
+      modGrid.innerHTML = '';
+      MODIFIERS.forEach((m) => {
+        const label = document.createElement('label');
+        label.className = 'pill';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = String(m.bit);
+        cb.style.margin = '0';
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(m.label));
+        modGrid.appendChild(label);
+      });
+    }
+
+    function renderJsonPreview() {
+      const payload = {
+        layerTitles: state.layerTitles,
+        layers: state.layers.map(layer => ({ keys: layer }))
+      };
+      jsonPreview.value = JSON.stringify(payload, null, 2);
+    }
+
+    function renderAll() {
+      renderLayerTabs();
+      renderGrid();
+      renderEditor();
+      renderKeyList();
+      renderJsonPreview();
+    }
+
+    function updateStateFromEditor(triggerRender = true) {
+      if (isRendering) return;
+      const type = Number(typeSelect.value);
+      if (type === 0) {
+        state.layers[state.currentLayer][state.selectedIndex] = { type: 0, key1: 0, key2: 0, macro: "" };
+      } else if (type === 1) {
+        state.layers[state.currentLayer][state.selectedIndex] = {
+          type: 1,
+          key1: Number(singleKeySelect.value),
+          key2: 0,
+          macro: ""
+        };
+      } else if (type === 2) {
+        let mod = 0;
+        [...modGrid.querySelectorAll('input[type=checkbox]')].forEach((cb) => {
+          if (cb.checked) mod |= Number(cb.value);
+        });
+        state.layers[state.currentLayer][state.selectedIndex] = {
+          type: 2,
+          key1: mod,
+          key2: Number(comboKeySelect.value),
+          macro: ""
+        };
+      } else if (type === 3) {
+        state.layers[state.currentLayer][state.selectedIndex] = {
+          type: 3,
+          key1: 0,
+          key2: 0,
+          macro: macroInput.value || ""
+        };
+      }
+      if (triggerRender) renderAll();
+    }
+
+    async function connect() {
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        writer = port.writable.getWriter();
+        readLoopRunning = true;
+        readLoop();
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        sendBtn.disabled = false;
+        fetchBtn.disabled = false;
+        setStatus('연결됨', 'ok');
+        setResp('기기 연결됨', 'ok');
+      } catch (err) {
+        setStatus('연결 실패', 'err');
+        setResp(String(err), 'err');
+      }
+    }
+
+    async function disconnect() {
+      readLoopRunning = false;
+      try {
+        if (reader) { await reader.cancel(); }
+        if (writer) { writer.releaseLock(); }
+        if (port) { await port.close(); }
+      } finally {
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+        sendBtn.disabled = true;
+        fetchBtn.disabled = true;
+        setStatus('미연결');
+        setResp('기기 연결 끊김', 'warn');
+      }
+    }
+
+    async function readLoop() {
+      const textDecoder = new TextDecoder();
+      while (port?.readable && readLoopRunning) {
+        reader = port.readable.getReader();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+              const text = textDecoder.decode(value);
+              rxBuffer += text;
+              const lines = rxBuffer.split(/\r?\n/);
+              rxBuffer = lines.pop() || '';
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                if (trimmed.startsWith('{')) {
+                  try {
+                    const json = JSON.parse(trimmed);
+                    if (json.layers) {
+                      applyStateFromJson(json);
+                      setResp('장치 설정 수신', 'ok');
+                      continue;
+                    }
+                  } catch (err) {
+                    setResp('JSON 파싱 실패', 'err');
+                    continue;
+                  }
+                }
+                setResp(trimmed, 'ok');
+              }
+            }
+          }
+        } catch (err) {
+          setResp(String(err), 'err');
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    }
+
+    async function sendJson() {
+      try {
+        const payload = {
+          layerTitles: state.layerTitles,
+          layers: state.layers.map(layer => ({ keys: layer }))
+        };
+        const tx = JSON.stringify(payload);
+        const textEncoder = new TextEncoder();
+        await writer.write(textEncoder.encode(tx + "\r\n"));
+        setResp(`TX len=${tx.length}`, 'ok');
+      } catch (err) {
+        setResp('전송 실패: ' + err.message, 'err');
+      }
+    }
+
+    async function fetchFromDevice() {
+      try {
+        const textEncoder = new TextEncoder();
+        await writer.write(textEncoder.encode("GET\r\n"));
+        setResp('장치에 요청 전송', 'ok');
+      } catch (err) {
+        setResp('요청 실패: ' + err.message, 'err');
+      }
+    }
+
+    function saveToFile() {
+      const payload = {
+        layerTitles: state.layerTitles,
+        layers: state.layers.map(layer => ({ keys: layer }))
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'macrokeypad-keymap.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      setResp('JSON 저장 완료', 'ok');
+    }
+
+    function loadFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const json = JSON.parse(String(reader.result || ''));
+          applyStateFromJson(json);
+          setResp('JSON 불러오기 완료', 'ok');
+        } catch (err) {
+          setResp('JSON 불러오기 실패', 'err');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+
+    connectBtn.addEventListener('click', connect);
+    disconnectBtn.addEventListener('click', disconnect);
+    sendBtn.addEventListener('click', sendJson);
+    resetBtn.addEventListener('click', setDefaultKeyMap);
+    saveBtn.addEventListener('click', saveToFile);
+    loadBtn.addEventListener('click', () => fileInput.click());
+    fetchBtn.addEventListener('click', fetchFromDevice);
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (file) loadFromFile(file);
+      fileInput.value = '';
+    });
+    keySearch.addEventListener('input', renderKeyList);
+    applyBtn.addEventListener('click', () => updateStateFromEditor(true));
+    clearBtn.addEventListener('click', () => {
+      state.layers[state.currentLayer][state.selectedIndex] = { type: 0, key1: 0, key2: 0, macro: "" };
+      renderAll();
+    });
+    typeSelect.addEventListener('change', () => updateStateFromEditor(true));
+    singleKeySelect.addEventListener('change', () => updateStateFromEditor(true));
+    comboKeySelect.addEventListener('change', () => updateStateFromEditor(true));
+    macroInput.addEventListener('input', () => updateStateFromEditor(false));
+    modGrid.addEventListener('change', () => updateStateFromEditor(true));
+
+    renderModGrid();
+    renderKeySelects();
+    setDefaultKeyMap();
+  </script>
+</body>
+</html>
