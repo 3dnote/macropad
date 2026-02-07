@@ -132,6 +132,8 @@
     .mod-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .json-preview { width: 100%; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .hint { font-size: 12px; color: var(--muted); }
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type=range] { flex: 1; }
   </style>
 </head>
 <body>
@@ -222,6 +224,24 @@
         <h2 style="margin-top:20px;">키 테스트</h2>
         <input id="keyTest" placeholder="여기에 포커스 후 키패드를 눌러 테스트" />
 
+        <h2 style="margin-top:20px;">부저</h2>
+        <div class="field">
+          <label>볼륨</label>
+          <div class="slider-row">
+            <input id="buzzerVolume" type="range" min="0" max="100" step="1" />
+            <span id="buzzerVolumeLabel" class="pill">0%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="pill" style="width: fit-content;">
+            <input id="buzzerMute" type="checkbox" style="margin: 0 6px 0 0;" />
+            Mute
+          </label>
+        </div>
+        <div class="row">
+          <button id="buzzerTestBtn" class="secondary">부저 테스트</button>
+        </div>
+
         <h2 style="margin-top:20px;">JSON 미리보기</h2>
         <textarea class="json-preview" id="jsonPreview" readonly></textarea>
       </div>
@@ -266,6 +286,10 @@
     const keySearch = document.getElementById('keySearch');
     const jsonPreview = document.getElementById('jsonPreview');
     const modGrid = document.getElementById('modGrid');
+    const buzzerVolume = document.getElementById('buzzerVolume');
+    const buzzerVolumeLabel = document.getElementById('buzzerVolumeLabel');
+    const buzzerMute = document.getElementById('buzzerMute');
+    const buzzerTestBtn = document.getElementById('buzzerTestBtn');
 
     let port;
     let reader;
@@ -317,6 +341,7 @@
     const state = {
       currentLayer: 0,
       selectedIndex: 0,
+      buzzer: { volume: 60, mute: false },
       layerTitles: ['문서용', '동영상용', '코딩용', '기타'],
       layers: Array.from({ length: LAYERS }, () => Array.from({ length: TOTAL_KEYS }, () => ({
         type: 0, key1: 0, key2: 0, macro: ""
@@ -341,6 +366,11 @@
       if (!json || !Array.isArray(json.layers)) {
         setResp('JSON 형식 오류: layers 없음', 'err');
         return;
+      }
+      if (json.buzzer) {
+        const volume = Number(json.buzzer.volume);
+        state.buzzer.volume = Number.isFinite(volume) ? Math.max(0, Math.min(100, volume)) : state.buzzer.volume;
+        state.buzzer.mute = Boolean(json.buzzer.mute);
       }
       if (Array.isArray(json.layerTitles)) {
         state.layerTitles = json.layerTitles.map(t => String(t || '').trim()).slice(0, LAYERS);
@@ -615,6 +645,7 @@
 
     function renderJsonPreview() {
       const payload = {
+        buzzer: state.buzzer,
         layerTitles: state.layerTitles,
         layers: state.layers.map(layer => ({ keys: layer }))
       };
@@ -626,7 +657,14 @@
       renderGrid();
       renderEditor();
       renderKeyList();
+      renderBuzzer();
       renderJsonPreview();
+    }
+
+    function renderBuzzer() {
+      buzzerVolume.value = String(state.buzzer.volume);
+      buzzerVolumeLabel.textContent = `${state.buzzer.volume}%`;
+      buzzerMute.checked = Boolean(state.buzzer.mute);
     }
 
     function updateStateFromEditor(triggerRender = true) {
@@ -742,6 +780,7 @@
     async function sendJson() {
       try {
         const payload = {
+          buzzer: state.buzzer,
           layerTitles: state.layerTitles,
           layers: state.layers.map(layer => ({ keys: layer }))
         };
@@ -764,8 +803,23 @@
       }
     }
 
+    async function sendBuzzerTest() {
+      try {
+        if (!writer) {
+          setResp('장치가 연결되지 않았습니다', 'warn');
+          return;
+        }
+        const textEncoder = new TextEncoder();
+        await writer.write(textEncoder.encode("BUZZER_TEST\r\n"));
+        setResp('부저 테스트 전송', 'ok');
+      } catch (err) {
+        setResp('부저 테스트 실패: ' + err.message, 'err');
+      }
+    }
+
     function saveToFile() {
       const payload = {
+        buzzer: state.buzzer,
         layerTitles: state.layerTitles,
         layers: state.layers.map(layer => ({ keys: layer }))
       };
@@ -817,6 +871,20 @@
     comboKeySelect.addEventListener('change', () => updateStateFromEditor(true));
     macroInput.addEventListener('input', () => updateStateFromEditor(false));
     modGrid.addEventListener('change', () => updateStateFromEditor(true));
+    buzzerVolume.addEventListener('input', () => {
+      state.buzzer.volume = Number(buzzerVolume.value);
+      buzzerVolumeLabel.textContent = `${state.buzzer.volume}%`;
+      if (state.buzzer.volume === 0) {
+        state.buzzer.mute = true;
+        buzzerMute.checked = true;
+      }
+      renderJsonPreview();
+    });
+    buzzerMute.addEventListener('change', () => {
+      state.buzzer.mute = buzzerMute.checked;
+      renderJsonPreview();
+    });
+    buzzerTestBtn.addEventListener('click', sendBuzzerTest);
 
     renderModGrid();
     renderKeySelects();
