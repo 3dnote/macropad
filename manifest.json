@@ -1,6 +1,6 @@
 {
   "name": "MacroKeypad ESP32-C3",
-  "version": "1.0.0",
+  "version": "0.1.2",
   "builds": [
     {
       "chipFamily": "ESP32-C3",
@@ -18,7 +18,7 @@
           "offset": 32768
         },
         {
-          "path": "firmware.bin",
+          "path": "firmware-0.1.2.bin",
           "offset": 65536
         }
       ]
