@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>MacroKeypad Web Serial Config by 3dnote</title>
   <style>
     :root {
@@ -60,6 +63,7 @@
     .firmware-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
     .firmware-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .firmware-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; color: var(--muted); }
 
     .layout { display: grid; grid-template-columns: 1.1fr 0.9fr 0.9fr; gap: 16px; }
     @media (max-width: 1180px) { .layout { grid-template-columns: 1fr; } }
@@ -261,6 +265,7 @@
       <div class="firmware-meta">
         <span class="pill" id="manifestVersionLabel">manifest v—</span>
         <button id="manifestRefreshBtn" class="secondary mini-btn">manifest 새로고침</button>
+        <span id="manifestUrlLabel" class="mono"></span>
       </div>
       <div class="firmware-note">실수 방지를 위해 페이지 하단에 배치했습니다. Chrome/Edge에서 HTTPS로 접속해야 하며, USB 연결 후 권한을 승인해야 합니다.</div>
     </div>
@@ -305,6 +310,7 @@
     const installBtn = document.getElementById('installBtn');
     const manifestVersionLabel = document.getElementById('manifestVersionLabel');
     const manifestRefreshBtn = document.getElementById('manifestRefreshBtn');
+    const manifestUrlLabel = document.getElementById('manifestUrlLabel');
 
     let port;
     let reader;
@@ -839,14 +845,16 @@
     async function loadManifestInfo() {
       try {
         const cacheBust = `?ts=${Date.now()}`;
-        const res = await fetch(`manifest.json${cacheBust}`, { cache: 'no-store' });
+        const url = `manifest.json${cacheBust}`;
+        const res = await fetch(url, { cache: 'no-store' });
         const data = await res.json();
         const ver = data?.version ? String(data.version) : '—';
         manifestVersionLabel.textContent = `manifest v${ver}`;
-        const manifestBust = data?.version ? `?v=${encodeURIComponent(data.version)}` : `?v=${Date.now()}`;
-        installBtn.setAttribute('manifest', `manifest.json${manifestBust}`);
+        installBtn.setAttribute('manifest', url);
+        manifestUrlLabel.textContent = url;
       } catch (err) {
         manifestVersionLabel.textContent = 'manifest v?';
+        manifestUrlLabel.textContent = 'manifest.json';
       }
     }
 
@@ -926,6 +934,7 @@
       await fetchFromDevice();
     });
     manifestRefreshBtn.addEventListener('click', loadManifestInfo);
+    installBtn.addEventListener('click', loadManifestInfo);
 
     renderModGrid();
     renderKeySelects();
