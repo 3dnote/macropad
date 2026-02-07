@@ -154,14 +154,6 @@
       <div class="status" id="lastResp" style="margin-top:8px;"></div>
     </div>
 
-    <div class="card">
-      <h2>펌웨어 업로드 (Web USB)</h2>
-      <div class="firmware-actions">
-        <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
-      </div>
-      <div class="firmware-note">Chrome/Edge에서 HTTPS로 접속해야 하며, USB 연결 후 권한을 승인해야 합니다.</div>
-    </div>
-
     <div class="layout">
       <div class="card">
         <div class="row" style="justify-content: space-between;">
@@ -233,6 +225,14 @@
         <h2 style="margin-top:20px;">JSON 미리보기</h2>
         <textarea class="json-preview" id="jsonPreview" readonly></textarea>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>펌웨어 업로드 (Web USB)</h2>
+      <div class="firmware-actions">
+        <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+      </div>
+      <div class="firmware-note">실수 방지를 위해 페이지 하단에 배치했습니다. Chrome/Edge에서 HTTPS로 접속해야 하며, USB 연결 후 권한을 승인해야 합니다.</div>
     </div>
   </div>
 
