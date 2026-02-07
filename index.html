@@ -838,12 +838,13 @@
 
     async function loadManifestInfo() {
       try {
-        const res = await fetch('manifest.json', { cache: 'no-store' });
+        const cacheBust = `?ts=${Date.now()}`;
+        const res = await fetch(`manifest.json${cacheBust}`, { cache: 'no-store' });
         const data = await res.json();
         const ver = data?.version ? String(data.version) : '—';
         manifestVersionLabel.textContent = `manifest v${ver}`;
-        const cacheBust = data?.version ? `?v=${encodeURIComponent(data.version)}` : `?v=${Date.now()}`;
-        installBtn.setAttribute('manifest', `manifest.json${cacheBust}`);
+        const manifestBust = data?.version ? `?v=${encodeURIComponent(data.version)}` : `?v=${Date.now()}`;
+        installBtn.setAttribute('manifest', `manifest.json${manifestBust}`);
       } catch (err) {
         manifestVersionLabel.textContent = 'manifest v?';
       }
