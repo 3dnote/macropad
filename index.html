@@ -141,7 +141,7 @@
     <div class="card">
       <div class="row" style="align-items: baseline; gap: 10px;">
         <h1 style="margin-bottom:0;">MacroKeypad Web Serial Config</h1>
-        <span class="pill" id="fwVersionLabel">v0.1.0</span>
+        <span class="pill" id="fwVersionLabel">v—</span>
       </div>
       <div class="subtitle">by 3dnote</div>
       <div class="row">
@@ -721,6 +721,7 @@
         fetchBtn.disabled = false;
         setStatus('연결됨', 'ok');
         setResp('기기 연결됨', 'ok');
+        await fetchFromDevice();
       } catch (err) {
         setStatus('연결 실패', 'err');
         setResp(String(err), 'err');
