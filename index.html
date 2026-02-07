@@ -129,6 +129,7 @@
     .key-code { color: var(--muted); font-size: 11px; }
 
     .pill { display: inline-flex; gap: 6px; align-items: center; padding: 4px 8px; border-radius: 999px; background: #232838; font-size: 11px; color: var(--muted); }
+    .mini-btn { padding: 4px 8px; font-size: 11px; border-radius: 999px; }
     .mod-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .json-preview { width: 100%; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
     .hint { font-size: 12px; color: var(--muted); }
@@ -142,6 +143,7 @@
       <div class="row" style="align-items: baseline; gap: 10px;">
         <h1 style="margin-bottom:0;">MacroKeypad Web Serial Config</h1>
         <span class="pill" id="fwVersionLabel">v—</span>
+        <button id="fwRefreshBtn" class="secondary mini-btn">버전 새로고침</button>
       </div>
       <div class="subtitle">by 3dnote</div>
       <div class="row">
@@ -294,6 +296,7 @@
     const buzzerMute = document.getElementById('buzzerMute');
     const buzzerTestBtn = document.getElementById('buzzerTestBtn');
     const fwVersionLabel = document.getElementById('fwVersionLabel');
+    const fwRefreshBtn = document.getElementById('fwRefreshBtn');
 
     let port;
     let reader;
@@ -893,6 +896,13 @@
       renderJsonPreview();
     });
     buzzerTestBtn.addEventListener('click', sendBuzzerTest);
+    fwRefreshBtn.addEventListener('click', async () => {
+      if (!writer) {
+        setResp('장치가 연결되지 않았습니다', 'warn');
+        return;
+      }
+      await fetchFromDevice();
+    });
 
     renderModGrid();
     renderKeySelects();
