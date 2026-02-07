@@ -59,6 +59,7 @@
     .status.err { color: var(--err); }
     .firmware-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
     .firmware-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .firmware-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
 
     .layout { display: grid; grid-template-columns: 1.1fr 0.9fr 0.9fr; gap: 16px; }
     @media (max-width: 1180px) { .layout { grid-template-columns: 1fr; } }
@@ -255,7 +256,11 @@
     <div class="card">
       <h2>펌웨어 업로드 (Web USB)</h2>
       <div class="firmware-actions">
-        <esp-web-install-button manifest="manifest.json"></esp-web-install-button>
+        <esp-web-install-button id="installBtn" manifest="manifest.json"></esp-web-install-button>
+      </div>
+      <div class="firmware-meta">
+        <span class="pill" id="manifestVersionLabel">manifest v—</span>
+        <button id="manifestRefreshBtn" class="secondary mini-btn">manifest 새로고침</button>
       </div>
       <div class="firmware-note">실수 방지를 위해 페이지 하단에 배치했습니다. Chrome/Edge에서 HTTPS로 접속해야 하며, USB 연결 후 권한을 승인해야 합니다.</div>
     </div>
@@ -297,6 +302,9 @@
     const buzzerTestBtn = document.getElementById('buzzerTestBtn');
     const fwVersionLabel = document.getElementById('fwVersionLabel');
     const fwRefreshBtn = document.getElementById('fwRefreshBtn');
+    const installBtn = document.getElementById('installBtn');
+    const manifestVersionLabel = document.getElementById('manifestVersionLabel');
+    const manifestRefreshBtn = document.getElementById('manifestRefreshBtn');
 
     let port;
     let reader;
@@ -828,6 +836,19 @@
       }
     }
 
+    async function loadManifestInfo() {
+      try {
+        const res = await fetch('manifest.json', { cache: 'no-store' });
+        const data = await res.json();
+        const ver = data?.version ? String(data.version) : '—';
+        manifestVersionLabel.textContent = `manifest v${ver}`;
+        const cacheBust = data?.version ? `?v=${encodeURIComponent(data.version)}` : `?v=${Date.now()}`;
+        installBtn.setAttribute('manifest', `manifest.json${cacheBust}`);
+      } catch (err) {
+        manifestVersionLabel.textContent = 'manifest v?';
+      }
+    }
+
     function saveToFile() {
       const payload = {
         buzzer: state.buzzer,
@@ -903,10 +924,12 @@
       }
       await fetchFromDevice();
     });
+    manifestRefreshBtn.addEventListener('click', loadManifestInfo);
 
     renderModGrid();
     renderKeySelects();
     setDefaultKeyMap();
+    loadManifestInfo();
   </script>
 </body>
 </html>
