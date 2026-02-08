@@ -420,61 +420,61 @@
     }
 
     function setDefaultKeyMap() {
-      const setKey = (l, i, type, key1, key2) => {
-        state.layers[l][i] = { type, key1, key2, macro: "" };
+      const setKey = (l, i, type, key1, key2, macro = "") => {
+        state.layers[l][i] = { type, key1, key2, macro };
       };
 
-      // Layer 0: 일반 문서 편집
-      setKey(0, 0, 2, 0x01, 0x1D); // Ctrl+Z
-      setKey(0, 1, 2, 0x01, 0x1C); // Ctrl+Y
-      setKey(0, 2, 2, 0x01, 0x1B); // Ctrl+X
-      setKey(0, 3, 2, 0x01, 0x06); // Ctrl+C
-      setKey(0, 4, 2, 0x01, 0x19); // Ctrl+V
-      setKey(0, 5, 2, 0x01, 0x16); // Ctrl+S
-      setKey(0, 6, 2, 0x01, 0x04); // Ctrl+A
-      setKey(0, 7, 2, 0x01, 0x09); // Ctrl+F
-      setKey(0, 8, 2, 0x01, 0x11); // Ctrl+N
-      setKey(0, 9, 1, 0x4E, 0x00); // PgDn
-      setKey(0, 10, 1, 0x4B, 0x00); // PgUp
+      // Layer 0
+      setKey(0, 0, 1, 0x29, 0x00); // Esc
+      setKey(0, 1, 3, 0x00, 0x00, "ID");
+      setKey(0, 2, 3, 0x00, 0x00, "ab6IDcdefghikAB");
+      setKey(0, 3, 2, 0x01, 0x04); // Ctrl+A
+      setKey(0, 4, 2, 0x01, 0x1D); // Ctrl+Z
+      setKey(0, 5, 2, 0x01, 0x1C); // Ctrl+Y
+      setKey(0, 6, 2, 0x01, 0x06); // Ctrl+C
+      setKey(0, 7, 2, 0x01, 0x19); // Ctrl+V
+      setKey(0, 8, 2, 0x01, 0x16); // Ctrl+S
+      setKey(0, 9, 1, 0x4B, 0x00); // PgUp
+      setKey(0, 10, 1, 0x4E, 0x00); // PgDn
 
-      // Layer 1: CAD/그래픽
-      setKey(1, 0, 2, 0x01, 0x1D); // Ctrl+Z
-      setKey(1, 1, 2, 0x03, 0x1D); // Ctrl+Shift+Z
-      setKey(1, 2, 2, 0x01, 0x16); // Ctrl+S
-      setKey(1, 3, 2, 0x03, 0x16); // Ctrl+Shift+S
-      setKey(1, 4, 2, 0x01, 0x0A); // Ctrl+G
-      setKey(1, 5, 2, 0x03, 0x0A); // Ctrl+Shift+G
-      setKey(1, 6, 2, 0x01, 0x27); // Ctrl+0
-      setKey(1, 7, 2, 0x01, 0x2E); // Ctrl+= (Zoom In)
-      setKey(1, 8, 2, 0x01, 0x2D); // Ctrl+- (Zoom Out)
-      setKey(1, 9, 2, 0x01, 0x2E); // Ctrl+= (Encoder CW)
-      setKey(1, 10, 2, 0x01, 0x2D); // Ctrl+- (Encoder CCW)
+      // Layer 1
+      setKey(1, 0, 1, 0x04, 0x00); // A
+      setKey(1, 1, 1, 0x05, 0x00); // B
+      setKey(1, 2, 1, 0x06, 0x00); // C
+      setKey(1, 3, 1, 0x07, 0x00); // D
+      setKey(1, 4, 1, 0x08, 0x00); // E
+      setKey(1, 5, 1, 0x09, 0x00); // F
+      setKey(1, 6, 1, 0x0A, 0x00); // G
+      setKey(1, 7, 1, 0x0B, 0x00); // H
+      setKey(1, 8, 1, 0x0C, 0x00); // I
+      setKey(1, 9, 1, 0x50, 0x00); // Left
+      setKey(1, 10, 1, 0x4F, 0x00); // Right
 
-      // Layer 2: 동영상 편집
-      setKey(2, 0, 1, 0x0D, 0x00); // J
-      setKey(2, 1, 1, 0x0E, 0x00); // K
-      setKey(2, 2, 1, 0x0F, 0x00); // L
-      setKey(2, 3, 1, 0x0C, 0x00); // I
-      setKey(2, 4, 1, 0x12, 0x00); // O
-      setKey(2, 5, 1, 0x2C, 0x00); // Space
-      setKey(2, 6, 1, 0x10, 0x00); // M
-      setKey(2, 7, 2, 0x01, 0x1D); // Ctrl+Z
-      setKey(2, 8, 2, 0x01, 0x16); // Ctrl+S
-      setKey(2, 9, 1, 0x4F, 0x00); // Right
-      setKey(2, 10, 1, 0x50, 0x00); // Left
+      // Layer 2
+      setKey(2, 0, 1, 0x1E, 0x00); // 1
+      setKey(2, 1, 1, 0x1F, 0x00); // 2
+      setKey(2, 2, 1, 0x20, 0x00); // 3
+      setKey(2, 3, 1, 0x21, 0x00); // 4
+      setKey(2, 4, 1, 0x22, 0x00); // 5
+      setKey(2, 5, 1, 0x23, 0x00); // 6
+      setKey(2, 6, 1, 0x24, 0x00); // 7
+      setKey(2, 7, 1, 0x25, 0x00); // 8
+      setKey(2, 8, 1, 0x26, 0x00); // 9
+      setKey(2, 9, 1, 0x4B, 0x00); // PgUp
+      setKey(2, 10, 1, 0x4E, 0x00); // PgDn
 
-      // Layer 3: 음악/영상 재생
-      setKey(3, 0, 1, 0x2C, 0x00); // Space
-      setKey(3, 1, 1, 0x50, 0x00); // Left
-      setKey(3, 2, 1, 0x4F, 0x00); // Right
-      setKey(3, 3, 1, 0x52, 0x00); // Up
-      setKey(3, 4, 1, 0x51, 0x00); // Down
-      setKey(3, 5, 1, 0x10, 0x00); // M
-      setKey(3, 6, 1, 0x09, 0x00); // F
-      setKey(3, 7, 1, 0x29, 0x00); // Esc
-      setKey(3, 8, 1, 0x28, 0x00); // Enter
-      setKey(3, 9, 1, 0x52, 0x00); // Up
-      setKey(3, 10, 1, 0x51, 0x00); // Down
+      // Layer 3
+      setKey(3, 0, 2, 0x02, 0x2E); // Shift + '='
+      setKey(3, 1, 1, 0x52, 0x00); // Up
+      setKey(3, 2, 1, 0x4B, 0x00); // PgUp
+      setKey(3, 3, 1, 0x50, 0x00); // Left
+      setKey(3, 4, 1, 0x4A, 0x00); // Home
+      setKey(3, 5, 1, 0x4F, 0x00); // Right
+      setKey(3, 6, 1, 0x2D, 0x00); // Minus
+      setKey(3, 7, 1, 0x51, 0x00); // Down
+      setKey(3, 8, 1, 0x4E, 0x00); // PgDn
+      setKey(3, 9, 1, 0x50, 0x00); // Left
+      setKey(3, 10, 1, 0x4F, 0x00); // Right
 
       renderAll();
     }
