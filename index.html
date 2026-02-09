@@ -141,6 +141,12 @@
     .hint { font-size: 12px; color: var(--muted); }
     .slider-row { display: flex; align-items: center; gap: 10px; }
     .slider-row input[type=range] { flex: 1; }
+    .log-area { background: #0b0d12; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .log-line { margin: 2px 0; }
+    .log-line.info { color: var(--muted); }
+    .log-line.ok { color: var(--ok); }
+    .log-line.err { color: var(--err); }
+    .log-line.warn { color: var(--warn); }
   </style>
 </head>
 <body>
@@ -165,6 +171,9 @@
         <input id="fileInput" type="file" accept="application/json" style="display:none" />
       </div>
       <div class="status" id="lastResp" style="margin-top:8px;"></div>
+      <h2 style="margin-top:16px;">시리얼 로그 (실시간)</h2>
+      <div class="log-area" id="logArea"></div>
+      <button id="clearLogBtn" class="secondary" style="margin-top:8px;">로그 지우기</button>
     </div>
 
     <div class="layout">
@@ -312,6 +321,19 @@
     const manifestVersionLabel = document.getElementById('manifestVersionLabel');
     const manifestRefreshBtn = document.getElementById('manifestRefreshBtn');
     const manifestUrlLabel = document.getElementById('manifestUrlLabel');
+    const logArea = document.getElementById('logArea');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+
+    function addLog(text, type = 'info') {
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+      logArea.appendChild(line);
+      logArea.scrollTop = logArea.scrollHeight;
+      while (logArea.children.length > 500) {
+        logArea.removeChild(logArea.firstChild);
+      }
+    }
 
     let port;
     let reader;
@@ -388,6 +410,9 @@
       if (!json || !Array.isArray(json.layers)) {
         setResp('JSON 형식 오류: layers 없음', 'err');
         return;
+      }
+      if (json.cfgStatus) {
+        setResp(`기기 상태: ${json.cfgStatus}`, 'ok');
       }
       if (json.fwVersion) {
         fwVersionLabel.textContent = `v${json.fwVersion}`;
@@ -778,12 +803,16 @@
               for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed) continue;
+                console.log('[RX]', trimmed);
+                addLog(trimmed, 'info');
                 if (trimmed.startsWith('CFG_OK')) {
-                  setResp(`전송완료 (${trimmed})`, 'ok');
+                  addLog(`>>> ${trimmed}`, 'ok');
+                  setResp(`✓ 전송완료: ${trimmed}`, 'ok');
                   continue;
                 }
                 if (trimmed.startsWith('CFG_ERR')) {
-                  setResp(`전송실패 (${trimmed})`, 'err');
+                  addLog(`>>> ${trimmed}`, 'err');
+                  setResp(`✗ 전송실패: ${trimmed}`, 'err');
                   continue;
                 }
                 if (trimmed.startsWith('{')) {
@@ -791,15 +820,19 @@
                     const json = JSON.parse(trimmed);
                     if (json.layers) {
                       applyStateFromJson(json);
-                      setResp('장치 설정 수신', 'ok');
+                      setResp('✓ 장치 설정 수신 완료', 'ok');
                       continue;
                     }
                   } catch (err) {
-                    setResp('JSON 파싱 실패', 'err');
+                    setResp('✗ JSON 파싱 실패', 'err');
                     continue;
                   }
                 }
-                setResp(trimmed, 'ok');
+                if (trimmed.includes('===') || trimmed.includes('!!!')) {
+                  setResp(trimmed, trimmed.includes('ERROR') ? 'err' : 'ok');
+                } else {
+                  setResp(trimmed, 'ok');
+                }
               }
             }
           }
@@ -909,6 +942,10 @@
       const file = e.target.files?.[0];
       if (file) loadFromFile(file);
       fileInput.value = '';
+    });
+    clearLogBtn.addEventListener('click', () => {
+      logArea.innerHTML = '';
+      addLog('로그 초기화됨', 'info');
     });
     keySearch.addEventListener('input', renderKeyList);
     applyBtn.addEventListener('click', () => updateStateFromEditor(true));
