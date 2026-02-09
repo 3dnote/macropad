@@ -226,12 +226,18 @@
               <option value="1">단일키</option>
               <option value="2">조합키</option>
               <option value="3">매크로</option>
+              <option value="4">미디어키</option>
             </select>
           </div>
 
           <div class="field" id="singleKeyField">
             <label>키</label>
             <select id="singleKeySelect"></select>
+          </div>
+
+          <div class="field" id="mediaKeyField">
+            <label>미디어 키</label>
+            <select id="mediaKeySelect"></select>
           </div>
 
           <div id="comboFields">
@@ -316,10 +322,12 @@
     const typeSelect = document.getElementById('typeSelect');
     const singleKeySelect = document.getElementById('singleKeySelect');
     const comboKeySelect = document.getElementById('comboKeySelect');
+    const mediaKeySelect = document.getElementById('mediaKeySelect');
     const macroInput = document.getElementById('macroInput');
     const applyBtn = document.getElementById('applyBtn');
     const clearBtn = document.getElementById('clearBtn');
     const singleKeyField = document.getElementById('singleKeyField');
+    const mediaKeyField = document.getElementById('mediaKeyField');
     const comboFields = document.getElementById('comboFields');
     const macroField = document.getElementById('macroField');
     const keyListEl = document.getElementById('keyList');
@@ -398,6 +406,16 @@
       { label: 'Delete', code: 0x4C }, { label: 'End', code: 0x4D }, { label: 'PgDn', code: 0x4E },
       { label: 'Right', code: 0x4F }, { label: 'Left', code: 0x50 }, { label: 'Down', code: 0x51 }, { label: 'Up', code: 0x52 },
       { label: 'Plus (+)', code: 0x2E, mod: 0x02, virtual: true, aliases: ['plus', '+', 'shift+equal'] }
+    ];
+
+    const MEDIA_LIST = [
+      { label: 'Media: Mute', code: 0xE2, aliases: ['mute', '음소거'] },
+      { label: 'Media: Vol Down', code: 0xEA, aliases: ['volume down', 'vol down', '볼륨 다운'] },
+      { label: 'Media: Vol Up', code: 0xE9, aliases: ['volume up', 'vol up', '볼륨 업'] },
+      { label: 'Media: Play/Pause', code: 0xCD, aliases: ['play', 'pause', '재생', '일시정지'] },
+      { label: 'Media: Prev Track', code: 0xB6, aliases: ['prev', 'previous', '이전곡'] },
+      { label: 'Media: Next Track', code: 0xB5, aliases: ['next', '다음곡'] },
+      { label: 'Media: Stop', code: 0xB7, aliases: ['stop', '정지'] }
     ];
 
     const state = {
@@ -480,16 +498,16 @@
       setKey(0, 9, 1, 0x4B, 0x00); // PgUp
       setKey(0, 10, 1, 0x4E, 0x00); // PgDn
 
-      // Layer 1
-      setKey(1, 0, 1, 0x04, 0x00); // A
-      setKey(1, 1, 1, 0x05, 0x00); // B
-      setKey(1, 2, 1, 0x06, 0x00); // C
-      setKey(1, 3, 1, 0x07, 0x00); // D
-      setKey(1, 4, 1, 0x08, 0x00); // E
-      setKey(1, 5, 1, 0x09, 0x00); // F
-      setKey(1, 6, 1, 0x0A, 0x00); // G
-      setKey(1, 7, 1, 0x0B, 0x00); // H
-      setKey(1, 8, 1, 0x0C, 0x00); // I
+      // Layer 1 (미디어)
+      setKey(1, 0, 4, 0xE2, 0x00); // Mute
+      setKey(1, 1, 4, 0xEA, 0x00); // Volume Down
+      setKey(1, 2, 4, 0xE9, 0x00); // Volume Up
+      setKey(1, 3, 4, 0xCD, 0x00); // Play/Pause
+      setKey(1, 4, 4, 0xB6, 0x00); // Prev Track
+      setKey(1, 5, 4, 0xB5, 0x00); // Next Track
+      setKey(1, 6, 4, 0xB7, 0x00); // Stop
+      setKey(1, 7, 1, 0x52, 0x00); // Up
+      setKey(1, 8, 1, 0x51, 0x00); // Down
       setKey(1, 9, 1, 0x50, 0x00); // Left
       setKey(1, 10, 1, 0x4F, 0x00); // Right
 
@@ -527,6 +545,11 @@
       return item ? item.label : `0x${code.toString(16).toUpperCase()}`;
     }
 
+    function mediaLabel(code) {
+      const item = MEDIA_LIST.find(k => k.code === code);
+      return item ? item.label : `Media 0x${code.toString(16).toUpperCase()}`;
+    }
+
     function comboLabel(mod, key) {
       const mods = MODIFIERS.filter(m => (mod & m.bit) !== 0).map(m => m.label);
       const keyName = key ? keyLabel(key) : 'None';
@@ -538,6 +561,7 @@
       if (km.type === 1) return keyLabel(km.key1);
       if (km.type === 2) return comboLabel(km.key1, km.key2);
       if (km.type === 3) return `Macro: ${km.macro.slice(0, 16)}${km.macro.length > 16 ? '…' : ''}`;
+      if (km.type === 4) return mediaLabel(km.key1);
       return 'Unknown';
     }
 
@@ -609,8 +633,11 @@
         cell.classList.remove('dragover');
         const code = Number(e.dataTransfer.getData('text/keycode'));
         const mod = Number(e.dataTransfer.getData('text/keymod')) || 0;
+        const keyType = e.dataTransfer.getData('text/keytype');
         if (code) {
-          if (mod) {
+          if (keyType === 'media') {
+            state.layers[state.currentLayer][index] = { type: 4, key1: code, key2: 0, macro: "" };
+          } else if (mod) {
             state.layers[state.currentLayer][index] = { type: 2, key1: mod, key2: code, macro: "" };
           } else {
             state.layers[state.currentLayer][index] = { type: 1, key1: code, key2: 0, macro: "" };
@@ -642,13 +669,16 @@
       typeSelect.value = String(km.type);
       singleKeySelect.value = String(km.key1 || 0);
       comboKeySelect.value = String(km.key2 || 0);
+      mediaKeySelect.value = String(km.key1 || 0);
       macroInput.value = km.macro || '';
 
       const showSingle = km.type === 1;
       const showCombo = km.type === 2;
       const showMacro = km.type === 3;
+      const showMedia = km.type === 4;
 
       singleKeyField.style.display = showSingle ? 'block' : 'none';
+      mediaKeyField.style.display = showMedia ? 'block' : 'none';
       comboFields.style.display = showCombo ? 'block' : 'none';
       macroField.style.display = showMacro ? 'block' : 'none';
 
@@ -660,12 +690,13 @@
 
     function renderKeyList() {
       const keyword = keySearch.value.trim().toLowerCase();
+      const allKeys = [...KEY_LIST, ...MEDIA_LIST.map(k => ({ ...k, media: true }))];
       const list = keyword
-        ? KEY_LIST.filter(k => {
+        ? allKeys.filter(k => {
           const hay = [k.label, ...(k.aliases || [])].map(v => String(v).toLowerCase());
           return hay.some(v => v.includes(keyword));
         })
-        : KEY_LIST;
+        : allKeys;
 
       keyListEl.innerHTML = '';
       list.forEach((k) => {
@@ -675,6 +706,7 @@
         item.addEventListener('dragstart', (e) => {
           e.dataTransfer.setData('text/keycode', String(k.code));
           e.dataTransfer.setData('text/keymod', String(k.mod || 0));
+          if (k.media) e.dataTransfer.setData('text/keytype', 'media');
         });
         const label = document.createElement('span');
         label.textContent = k.label;
@@ -692,8 +724,12 @@
         .filter(k => !k.virtual)
         .map(k => `<option value="${k.code}">${k.label} (0x${k.code.toString(16).toUpperCase()})</option>`)
         .join('');
+      const mediaOptions = MEDIA_LIST
+        .map(k => `<option value="${k.code}">${k.label} (0x${k.code.toString(16).toUpperCase()})</option>`)
+        .join('');
       singleKeySelect.innerHTML = `<option value="0">None</option>${options}`;
       comboKeySelect.innerHTML = `<option value="0">None</option>${options}`;
+      mediaKeySelect.innerHTML = `<option value="0">None</option>${mediaOptions}`;
     }
 
     function renderModGrid() {
@@ -764,6 +800,13 @@
           key1: 0,
           key2: 0,
           macro: macroInput.value || ""
+        };
+      } else if (type === 4) {
+        state.layers[state.currentLayer][state.selectedIndex] = {
+          type: 4,
+          key1: Number(mediaKeySelect.value),
+          key2: 0,
+          macro: ""
         };
       }
       if (triggerRender) renderAll();
@@ -969,6 +1012,7 @@
     typeSelect.addEventListener('change', () => updateStateFromEditor(true));
     singleKeySelect.addEventListener('change', () => updateStateFromEditor(true));
     comboKeySelect.addEventListener('change', () => updateStateFromEditor(true));
+    mediaKeySelect.addEventListener('change', () => updateStateFromEditor(true));
     macroInput.addEventListener('input', () => updateStateFromEditor(false));
     modGrid.addEventListener('change', () => updateStateFromEditor(true));
     buzzerVolume.addEventListener('input', () => {
