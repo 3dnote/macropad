@@ -141,12 +141,24 @@
     .hint { font-size: 12px; color: var(--muted); }
     .slider-row { display: flex; align-items: center; gap: 10px; }
     .slider-row input[type=range] { flex: 1; }
-    .log-area { background: #0b0d12; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
-    .log-line { margin: 2px 0; }
-    .log-line.info { color: var(--muted); }
-    .log-line.ok { color: var(--ok); }
-    .log-line.err { color: var(--err); }
-    .log-line.warn { color: var(--warn); }
+    .status-box { 
+      position: fixed; 
+      top: 16px; 
+      right: 16px; 
+      background: var(--panel); 
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      padding: 10px 14px; 
+      font-size: 12px; 
+      max-width: 320px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+    .status-box .title { color: var(--muted); margin-bottom: 4px; }
+    .status-box .msg { color: var(--text); font-weight: 500; }
+    .status-box .msg.ok { color: var(--ok); }
+    .status-box .msg.err { color: var(--err); }
+    .status-box .msg.warn { color: var(--warn); }
   </style>
 </head>
 <body>
@@ -171,9 +183,12 @@
         <input id="fileInput" type="file" accept="application/json" style="display:none" />
       </div>
       <div class="status" id="lastResp" style="margin-top:8px;"></div>
-      <h2 style="margin-top:16px;">시리얼 로그 (실시간)</h2>
-      <div class="log-area" id="logArea"></div>
-      <button id="clearLogBtn" class="secondary" style="margin-top:8px;">로그 지우기</button>
+    </div>
+
+    <!-- 간단한 상태 표시 (2-3줄) -->
+    <div class="status-box" id="statusBox" style="display:none;">
+      <div class="title">상태</div>
+      <div class="msg" id="statusMsg">대기 중</div>
     </div>
 
     <div class="layout">
@@ -321,17 +336,20 @@
     const manifestVersionLabel = document.getElementById('manifestVersionLabel');
     const manifestRefreshBtn = document.getElementById('manifestRefreshBtn');
     const manifestUrlLabel = document.getElementById('manifestUrlLabel');
-    const logArea = document.getElementById('logArea');
-    const clearLogBtn = document.getElementById('clearLogBtn');
+    const statusBox = document.getElementById('statusBox');
+    const statusMsg = document.getElementById('statusMsg');
 
-    function addLog(text, type = 'info') {
-      const line = document.createElement('div');
-      line.className = `log-line ${type}`;
-      line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
-      logArea.appendChild(line);
-      logArea.scrollTop = logArea.scrollHeight;
-      while (logArea.children.length > 500) {
-        logArea.removeChild(logArea.firstChild);
+    function showStatus(text, type = 'info') {
+      console.log(`[${new Date().toLocaleTimeString()}] ${text}`);
+      statusMsg.textContent = text;
+      statusMsg.className = `msg ${type}`;
+      statusBox.style.display = 'block';
+      
+      // 3초 후 자동 숨김 (ok/info만)
+      if (type === 'ok' || type === 'info') {
+        setTimeout(() => {
+          statusBox.style.display = 'none';
+        }, 3000);
       }
     }
 
@@ -804,14 +822,13 @@
                 const trimmed = line.trim();
                 if (!trimmed) continue;
                 console.log('[RX]', trimmed);
-                addLog(trimmed, 'info');
                 if (trimmed.startsWith('CFG_OK')) {
-                  addLog(`>>> ${trimmed}`, 'ok');
+                  showStatus(`✓ 전송완료: ${trimmed}`, 'ok');
                   setResp(`✓ 전송완료: ${trimmed}`, 'ok');
                   continue;
                 }
                 if (trimmed.startsWith('CFG_ERR')) {
-                  addLog(`>>> ${trimmed}`, 'err');
+                  showStatus(`✗ 전송실패: ${trimmed}`, 'err');
                   setResp(`✗ 전송실패: ${trimmed}`, 'err');
                   continue;
                 }
@@ -942,10 +959,6 @@
       const file = e.target.files?.[0];
       if (file) loadFromFile(file);
       fileInput.value = '';
-    });
-    clearLogBtn.addEventListener('click', () => {
-      logArea.innerHTML = '';
-      addLog('로그 초기화됨', 'info');
     });
     keySearch.addEventListener('input', renderKeyList);
     applyBtn.addEventListener('click', () => updateStateFromEditor(true));
