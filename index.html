@@ -778,6 +778,14 @@
               for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed) continue;
+                if (trimmed.startsWith('CFG_OK')) {
+                  setResp(`전송완료 (${trimmed})`, 'ok');
+                  continue;
+                }
+                if (trimmed.startsWith('CFG_ERR')) {
+                  setResp(`전송실패 (${trimmed})`, 'err');
+                  continue;
+                }
                 if (trimmed.startsWith('{')) {
                   try {
                     const json = JSON.parse(trimmed);
