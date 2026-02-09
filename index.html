@@ -69,12 +69,14 @@
     .layout { display: grid; grid-template-columns: minmax(0, 2.5fr) minmax(0, 4.5fr) minmax(0, 3fr); gap: 16px; }
     @media (max-width: 1180px) { .layout { grid-template-columns: 1fr; } }
 
-    .layer-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .layer-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    @media (max-width: 900px) { .layer-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 520px) { .layer-tabs { grid-template-columns: 1fr; } }
     .layer-tab {
       padding: 6px 10px; border-radius: 8px; background: #2a2f3a; cursor: pointer;
       font-size: 12px; font-weight: 600; color: var(--text);
       border: 1px solid transparent;
-      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+      display: flex; flex-direction: column; gap: 6px;
     }
     .layer-tab.active { background: var(--accent); border-color: rgba(255,255,255,0.15); }
 
@@ -579,18 +581,19 @@
         title.style.color = 'rgba(255,255,255,0.7)';
         title.style.whiteSpace = 'nowrap';
 
-        const input = document.createElement('input');
+        const input = document.createElement('textarea');
         input.value = state.layerTitles[i] || '';
         input.placeholder = '서브타이틀';
+        input.rows = 2;
         input.style.marginTop = '0';
         input.style.fontSize = '11px';
-        input.style.padding = '4px 6px';
+        input.style.padding = '6px 6px';
         input.style.borderRadius = '6px';
         input.style.border = '1px solid var(--border)';
         input.style.background = '#0b0d12';
         input.style.color = 'var(--text)';
-        input.style.flex = '1 1 140px';
-        input.style.minWidth = '120px';
+        input.style.width = '100%';
+        input.style.resize = 'vertical';
         input.addEventListener('click', (e) => e.stopPropagation());
         input.addEventListener('input', () => {
           state.layerTitles[i] = input.value;
