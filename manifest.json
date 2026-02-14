@@ -18,10 +18,11 @@
           "offset": 32768
         },
         {
-          "path": "firmware-0.3.4.bin",
+          "path": "firmware-0.3.6.bin",
           "offset": 65536
         }
       ]
     }
   ]
 }
+
